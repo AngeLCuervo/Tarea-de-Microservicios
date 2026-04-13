@@ -76,4 +76,4 @@ serverless deploy
 Esto desplegará las 3 funciones AWS Lambda y configurará un API HTTP en AWS API Gateway utilizando el validador de tokens nativo JWT conectado y validado a Auth0 de acuerdo con el Assignment propuesto.
 
 ## Autores
-Angel Cuervo - Sebastian Buitrago - Juan Nieto# Tarea-de-Microservicios
+Angel Cuervo - Sebastian Buitrago - Juan Nieto
