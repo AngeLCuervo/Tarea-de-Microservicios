@@ -1,0 +1,13 @@
+package com.twitterlike.monolith.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class PostCreateDto {
+    @NotBlank(message = "Post content cannot be empty")
+    @Size(max = 140, message = "Post content must be 140 characters or less")
+    private String content;
+
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+}

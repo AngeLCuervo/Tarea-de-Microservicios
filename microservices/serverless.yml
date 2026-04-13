@@ -1,0 +1,39 @@
+service: twitter-like-microservices
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  httpApi:
+    authorizers:
+      Auth0Authorizer:
+        identitySource: $request.header.Authorization
+        issuerUrl: ${env:AUTH0_ISSUER_URL}
+        audience:
+          - ${env:AUTH0_AUDIENCE}
+
+functions:
+  getStream:
+    handler: src/index.getStream
+    events:
+      - httpApi:
+          method: GET
+          path: /api/stream
+
+  createPost:
+    handler: src/index.createPost
+    events:
+      - httpApi:
+          method: POST
+          path: /api/posts
+          authorizer:
+            name: Auth0Authorizer
+
+  getCurrentUser:
+    handler: src/index.getCurrentUser
+    events:
+      - httpApi:
+          method: GET
+          path: /api/me
+          authorizer:
+            name: Auth0Authorizer
