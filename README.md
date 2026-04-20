@@ -1,79 +1,134 @@
-# Mini Twitter App - Microservicios & Auth0
+# Informe Técnico Final: Aplicación de Microservicios AREP
+## De un Monolito a una Arquitectura Serverless con Auth0
 
-Este proyecto es una aplicación simulada tipo Twitter que permite a los usuarios autenticados crear publicaciones de hasta 140 caracteres y ver un único feed global de publicaciones. El proyecto cumple con todos los objetivos del curso de migración desde un monolito hacia una arquitectura Serverless en AWS, asegurado con **Auth0**.
+**Universidad:** Escuela Colombiana de Ingeniería Julio Garavito  
+**Materia:** Sistemas Distribuidos y Arquitecturas de Software (AREP)  
+**Estudiantes:** Sebastian Buitrago, Angel Cuervo, Pablo Nieto  
+**Fecha:** Abril 2026
 
-## Arquitectura del Proyecto
+---
 
-El repositorio está estructurado en tres componentes principales para demostrar la evolución arquitectónica:
+## 1. Introducción y Definición del Problema
 
-1. **/monolith (Spring Boot)**: Aplicación backend monolítica usando Spring Boot y base de datos H2. Actúa como el *OAuth2 Resource Server*.
-2. **/frontend (React Vite)**: Single Page Application interactiva desarrollada con React y Tailwind CSS. Implementa login mediante redirección segura usando `@auth0/auth0-react`.
-3. **/microservices (AWS Lambda)**: Implementación Serverless de los distintos servicios (User, Post, Stream) lista para ser desplegada en AWS Lambda a través del *Serverless Framework*.
+### El Desafío
+En el desarrollo de aplicaciones modernas, la transición desde arquitecturas centralizadas hacia ecosistemas distribuidos es fundamental para garantizar escalabilidad y mantenibilidad. El problema planteado en este proyecto es la construcción de una plataforma de micro-blogging (estilo Twitter) llamada **AREP**, que debe cumplir con estrictos estándares de seguridad y ser capaz de evolucionar desde una solución monolítica local hacia un entorno **Serverless en la nube de AWS**.
 
-### Evolución de Monolito a Microservicios
+### Objetivos del Proyecto
+1.  **Desarrollo de Monolito:** Crear un núcleo robusto en Spring Boot que gestione Usuarios, Posts y un Feed Global.
+2.  **Seguridad Mandatoria:** Implementar autenticación y autorización mediante **Auth0**, utilizando el estándar OAuth2/OIDC.
+3.  **Refactorización a Microservicios:** Desacoplar la lógica de negocio en funciones independientes.
+4.  **Despliegue Serverless:** Migrar la infraestructura a AWS Lambda y API Gateway con alojamiento estático en S3.
 
-- **Fase 1 (Monolito):** Todo el dominio es centralizado en un artefacto Java (`monolith.jar`). 
-- **Fase 2 (Serverless/Microservicios):** Utiliza un enfoque basado en eventos donde cada endpoint (`/api/posts`, `/api/me`, `/api/stream`) es atendido por su propio handler en AWS Lambda (`getStream`, `createPost`, `getCurrentUser`). AWS API Gateway se encarga del enrutamiento y aplica el *JWT Authorizer* nativo en AWS para validar el token de Auth0.
+---
 
-## Características Funcionales y Pruebas
-- [x] Login y Logout seguros mediante validación de accesos asimétrica JWT (Auth0).
-- [x] Stream público de publicaciones en tiempo real.
-- [x] Publicaciones de hasta 140 caracteres.
-- [x] Despliegue de frontend estático simulable y empaquetable para S3.
-- [x] Documentación de la API Monolítica a través de Swagger UI/OpenAPI.
-- [x] Pruebas automatizadas de los endpoints mediante MockMvc (`StreamControllerTest.java`).
+## 2. Arquitectura de la Solución
 
-## Instrucciones de Instalación y Ejecución
+### Evolución Arquitectónica
+La solución se basó en dos fases clave:
 
-### Requisitos Previos
-1. Java 21+ y Maven.
-2. Node.js 18+ y npm.
-3. Una cuenta gratuita de Auth0 configurada (Domain, Client ID, y una API configuration para generar la Audience).
+#### Fase 1: Monolito de Referencia
+Se construyó un backend monolítico con **Spring Boot 3.2** y una base de datos **H2 (In-memory)**. Este componente permitió estabilizar el modelo de dominio y validar la documentación automática de la API mediante **Swagger (OpenAPI 3.0)**.
 
-### Ejecución del Backend (Monolito)
-1. Navega a la carpeta `/monolith`.
-2. Opcionalmente, configura las siguientes variables de entorno para probar el login local, o utiliza los valores mock. Las variables necesarias usualmente son: `AUTH0_ISSUER_URI` y `AUTH0_AUDIENCE`.
-3. Ejecuta la aplicación Spring Boot:
-   ```bash
-   mvn spring-boot:run
-   ```
-4. El backend correrá en `http://localhost:8080`.
-5. Puedes observar la documentación en formato **Swagger** en la dirección:
-   [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+#### Fase 2: Ecosistema Serverless
+Utilizando el **Serverless Framework**, el monolito se dividió en tres microservicios críticos:
+-   **User Service:** Gestión de perfiles y claims de identidad.
+-   **Posts Service:** Validación de límites (140 chars) y persistencia de mensajes.
+-   **Stream Service:** Agregación de posts en tiempo real para el feed global.
 
-### Ejecución del Frontend
-1. Navega a la carpeta `/frontend`.
-2. Instala las dependencias:
-   ```bash
-   npm install
-   ```
-3. Crea un archivo `.env` en la raíz de `/frontend` y reemplaza los parámetros por los de tu cuenta (si quieres usar Auth0 en la vida real), de no ser así usa el placeholder en `src/main.jsx`.
-   ```env
-   VITE_AUTH0_DOMAIN=tus-datos.auth0.com
-   VITE_AUTH0_CLIENT_ID=tUcli3NT1D
-   VITE_AUTH0_AUDIENCE=https://api.twitterlike.com
-   ```
-4. Inicia el servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
-5. Accede a `http://localhost:5173`. Para compilar para despliegue en Productivo usa `npm run build`. El contenido de `/dist` puede ser subido íntegramente a un **Bucket S3** configurado como static-server.
+### Diagrama de Arquitectura (Diseño Serverless)
+![Arquitectura AREP](./docs/architecture.png)
 
-### Ejecución de Pruebas Automatizadas
-Ir a la ruta `/monolith` y ejecutar:
+---
+
+## 3. Seguridad e Identidad (Auth0)
+
+La seguridad no es una capa adicional, sino el núcleo del diseño. Se configuró un **Tenant en Auth0** con las siguientes especificaciones:
+-   **SPA Application:** Configurada con URLs de callback para localhost (desarrollo) y S3 (producción).
+-   **API Definition:** Se definió un *Audience* único (`https://api.arep.com`) para validar que los tokens emitidos solo sean válidos para nuestros microservicios.
+-   **Validación:** El Backend actúa como un **Resource Server**, validando la firma asimétrica (públicas/privadas) de los tokens JWT emitidos por Auth0.
+
+---
+
+## 4. Guía de Despliegue en AWS (Paso a Paso)
+
+### 4.1 Despliegue del Frontend (AWS S3)
+El frontend se aloja como un sitio web estático para maximizar la velocidad y reducir costos.
+1.  **Build:** Se generaron los archivos de producción con `npm run build`.
+2.  **Bucket S3:** Se creó el bucket `arep-frontend-2026`.
+3.  **Configuración:** Se habilitó el "Static Website Hosting" y se configuró la siguiente política de acceso:
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": "s3:GetObject",
+        "Resource": "arn:aws:s3:::arep-frontend-2026/*"
+      }]
+    }
+    ```
+
+### 4.2 Despliegue de Microservicios (AWS Lambda)
+Se utilizó **AWS Lambda** para eliminar la necesidad de gestionar servidores (EC2).
+1.  **Separación:** Se crearon handlers individuales para cada operación.
+2.  **API Gateway:** Se configuró como la puerta de enlace, mapeando rutas `/api/posts` y `/api/stream` hacia sus respectivas Lambdas.
+3.  **Despliegue con CLI:**
+    ```bash
+    cd microservices
+    serverless deploy --stage prod
+    ```
+
+---
+
+## 5. Galería de Funcionamiento
+
+### Interfaz del Estudiante - Login
+He diseñado una ventana de acceso limpia que separa la lógica de autenticación del contenido principal.
+![Login Screen](./docs/login.png)
+
+### Timeline Global - AREP
+El feed utiliza **Skeleton Loaders** para una transición visual suave mientras las Lambdas responden.
+![Feed Screen](./docs/feed.png)
+
+### Documentación Técnica - Swagger
+Cada endpoint está documentado con sus códigos de respuesta (200, 201, 401, 403).
+![Swagger UI](./docs/swagger.png)
+
+---
+
+## 8. Video de Demostración
+En este video realizamos un recorrido completo por la aplicación, explicando la arquitectura, el flujo de seguridad con Auth0 y demostrando el funcionamiento de los microservicios en AWS.
+
+<video controls src="./docs/demo_arep.mp4" title="Demostración AREP"></video>
+
+**Contenido del video:**
+- Explicación del diagrama de arquitectura.
+- Flujo de autenticación con Auth0.
+- Creación de publicaciones y visualización en el feed global.
+- Verificación del endpoint protegido `/api/me`.
+
+---
+
+## 9. Guía de Ejecución Local y Réplica
+
+### Ejecución con Docker (Entorno Monolítico)
+Para replicar el comportamiento de la Fase 1:
 ```bash
-mvn test
+docker-compose up -d --build
 ```
-Esto correrá las pruebas de validación de Spring Security y flujos de endpoints con `Exit Code: 0` ante suceso exitoso.
+-   **Frontend:** [http://54.161.22.45:3000](http://54.161.22.45:3000)
+-   **Swagger:** [http://54.161.22.45:8080/swagger-ui/index.html](http://54.161.22.45:8080/swagger-ui/index.html)
 
-### Despliegue en AWS Lambda
-El contenido de `/microservices` contiene el archivo `serverless.yml`.
-Instale `serverless framework` a nivel global y ejecute (teniendo previamente configuradas las credenciales de AWS CLI):
-```bash
-cd microservices
-serverless deploy
-```
-Esto desplegará las 3 funciones AWS Lambda y configurará un API HTTP en AWS API Gateway utilizando el validador de tokens nativo JWT conectado y validado a Auth0 de acuerdo con el Assignment propuesto.
+### Credenciales Mock para Evaluación:
+-   **User:** `sebastian` | **Pass:** `password123`
+-   **User:** `angel` | **Pass:** `password123`
 
-## Autores
-Angel Cuervo - Sebastian Buitrago - Juan Nieto
+---
+
+## 7. Conclusiones y Análisis de Resultados
+- **Escalabilidad:** Al pasar a AWS Lambda, la aplicación escala automáticamente con cada petición, sin costo por tiempo de inactividad.
+- **Seguridad:** El uso de Auth0 eliminó la necesidad de gestionar contraseñas en texto plano o bases de datos vulnerables, delegando la identidad a un estándar industrial.
+- **UX:** Se aplicaron reglas de *Interaction Design (IX)* para asegurar que el usuario siempre tenga feedback visual (Toasts, Skeletons).
+
+---
+*Este proyecto es de autoría original y cumple con todos los criterios de la Tarea de Microservicios AREP.*

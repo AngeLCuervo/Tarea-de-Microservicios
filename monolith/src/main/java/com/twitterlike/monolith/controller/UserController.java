@@ -3,14 +3,20 @@ package com.twitterlike.monolith.controller;
 import com.twitterlike.monolith.dto.UserDto;
 import com.twitterlike.monolith.entity.User;
 import com.twitterlike.monolith.repository.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/me")
+@Tag(name = "User", description = "Endpoints for user profile and information")
 public class UserController {
 
     private final UserRepository userRepository;
@@ -20,17 +26,20 @@ public class UserController {
     }
 
     @GetMapping
-    public UserDto getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
-        String auth0Id = jwt.getSubject();
+    @Operation(
+        summary = "Get current user profile", 
+        description = "Retrieves the profile information of the currently authenticated user. Requires Basic Auth.",
+        security = @SecurityRequirement(name = "basicAuth")
+    )
+    public UserDto getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in");
+        }
         
-        User user = userRepository.findByAuth0Id(auth0Id).orElseGet(() -> {
-            // First time login, create basic user from token
-            User newUser = new User();
-            newUser.setAuth0Id(auth0Id);
-            newUser.setUsername(jwt.getClaimAsString("nickname") != null ? jwt.getClaimAsString("nickname") : auth0Id);
-            newUser.setEmail(jwt.getClaimAsString("email")); // Requires scope
-            return userRepository.save(newUser);
-        });
+        String username = userDetails.getUsername();
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         return new UserDto(user);
     }

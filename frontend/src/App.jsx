@@ -1,25 +1,60 @@
-import React, { useState, useEffect } from 'react'
-import { useAuth0 } from '@auth0/auth0-react'
-import { LogOut, LogIn, Send } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import LoginView from './components/LoginView';
+import FeedView from './components/FeedView';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-6 right-6 z-[200] animate-slide-up">
+      <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-md border ${
+        type === 'success' ? 'bg-white/90 border-emerald-100' : 'bg-white/90 border-rose-100'
+      }`}>
+        {type === 'success' ? (
+          <CheckCircle className="text-emerald-500" size={20} />
+        ) : (
+          <AlertCircle className="text-rose-500" size={20} />
+        )}
+        <p className="text-sm font-semibold text-slate-800">{message}</p>
+      </div>
+    </div>
+  );
+};
 
 function App() {
-  const { loginWithRedirect, logout, user, isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
+  const [auth, setAuth] = useState(() => {
+    const saved = localStorage.getItem('twitter_auth');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
   const [posts, setPosts] = useState([]);
-  const [newPostContent, setNewPostContent] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
-  const [apiUser, setApiUser] = useState(null);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     fetchStream();
+    const interval = setInterval(fetchStream, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      syncUser();
-    }
-  }, [isAuthenticated]);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const getAuthHeaders = (username, password) => {
+    const user = username || auth?.username;
+    const pass = password || auth?.password;
+    if (!user || !pass) return {};
+    const base64 = btoa(`${user}:${pass}`);
+    return { 'Authorization': `Basic ${base64}` };
+  };
 
   const fetchStream = async () => {
     try {
@@ -30,138 +65,83 @@ function App() {
       }
     } catch (error) {
       console.error("Error fetching stream:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const syncUser = async () => {
+  const handleLogin = async (username, password) => {
     try {
-      const token = await getAccessTokenSilently();
+      const base64 = btoa(`${username}:${password}`);
       const response = await fetch(`${API_BASE_URL}/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Basic ${base64}` }
       });
+      
       if (response.ok) {
-        const data = await response.json();
-        setApiUser(data);
+        const userData = await response.json();
+        const authData = { ...userData, password };
+        setAuth(authData);
+        localStorage.setItem('twitter_auth', JSON.stringify(authData));
+        showToast(`¡Hola, ${userData.username}!`);
+        fetchStream();
+        return true;
       }
+      return false;
     } catch (error) {
-      console.error("Error syncing user:", error);
+      showToast('Error de conexión', 'error');
+      return false;
     }
   };
 
-  const handlePostSubmit = async (e) => {
-    e.preventDefault();
-    if (!newPostContent.trim() || newPostContent.length > 140) return;
+  const handleLogout = () => {
+    setAuth(null);
+    localStorage.removeItem('twitter_auth');
+    showToast('Sesión cerrada');
+  };
 
+  const handlePost = async (content) => {
     setIsPosting(true);
     try {
-      const token = await getAccessTokenSilently();
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...getAuthHeaders()
         },
-        body: JSON.stringify({ content: newPostContent })
+        body: JSON.stringify({ content })
       });
 
       if (response.ok) {
-        setNewPostContent('');
-        fetchStream(); // refresh feed
+        showToast('¡Publicado!');
+        fetchStream(); 
+      } else {
+        showToast('Error al publicar', 'error');
       }
     } catch (error) {
-      console.error("Error creating post:", error);
+      showToast('Error de red', 'error');
     } finally {
       setIsPosting(false);
     }
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen bg-gray-100">Cargando...</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100 font-sans">
-      <header className="bg-white shadow">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-500 tracking-tight">MiniTwitter</h1>
-          <div>
-            {!isAuthenticated ? (
-              <button 
-                onClick={() => loginWithRedirect()}
-                className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-full font-semibold hover:bg-blue-600 transition"
-              >
-                <LogIn size={18} /> Iniciar Sesión
-              </button>
-            ) : (
-              <div className="flex items-center gap-4">
-                <span className="font-medium text-gray-700">{user?.nickname}</span>
-                <button 
-                  onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-                  className="flex items-center gap-2 text-gray-500 hover:text-red-500 transition font-medium"
-                >
-                  <LogOut size={18} /> Salir
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-xl mx-auto mt-8 px-4">
-        {isAuthenticated && apiUser && (
-          <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100">
-            <form onSubmit={handlePostSubmit}>
-              <textarea
-                className="w-full resize-none border-b-2 border-transparent focus:border-blue-500 focus:ring-0 outline-none text-lg p-2 transition bg-gray-50 rounded-md"
-                placeholder="¿Qué está pasando?"
-                rows="3"
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                maxLength={140}
-              ></textarea>
-              <div className="flex justify-between items-center mt-3 pt-2">
-                <span className={`text-sm font-medium ${newPostContent.length > 130 ? 'text-red-500' : 'text-gray-400'}`}>
-                  {newPostContent.length}/140
-                </span>
-                <button 
-                  type="submit"
-                  disabled={isPosting || !newPostContent.trim() || newPostContent.length > 140}
-                  className="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Send size={16} /> Postear
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {posts.length === 0 ? (
-            <p className="text-center text-gray-500 mt-10">No hay posts aún. ¡Sé el primero!</p>
-          ) : (
-            posts.map(post => (
-              <div key={post.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-                    {post.username.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900">{post.username}</h3>
-                    <p className="text-xs text-gray-500">
-                      {new Date(post.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-gray-800 text-lg break-words">{post.content}</p>
-              </div>
-            ))
-          )}
-        </div>
-      </main>
-    </div>
-  )
+    <>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+      
+      {!auth ? (
+        <LoginView onLogin={handleLogin} />
+      ) : (
+        <FeedView 
+          auth={auth} 
+          posts={posts} 
+          isLoading={isLoading} 
+          isPosting={isPosting}
+          onLogout={handleLogout}
+          onPost={handlePost}
+        />
+      )}
+    </>
+  );
 }
 
-export default App
+export default App;

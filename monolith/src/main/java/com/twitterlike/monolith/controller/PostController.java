@@ -6,15 +6,19 @@ import com.twitterlike.monolith.entity.Post;
 import com.twitterlike.monolith.entity.User;
 import com.twitterlike.monolith.repository.PostRepository;
 import com.twitterlike.monolith.repository.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/posts")
+@Tag(name = "Posts", description = "Endpoints for creating and managing posts")
 public class PostController {
 
     private final PostRepository postRepository;
@@ -27,10 +31,19 @@ public class PostController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PostDto createPost(@Valid @RequestBody PostCreateDto dto, @AuthenticationPrincipal Jwt jwt) {
-        String auth0Id = jwt.getSubject();
-        User user = userRepository.findByAuth0Id(auth0Id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User must fetch /api/me first"));
+    @Operation(
+        summary = "Create a new post", 
+        description = "Creates a new 140-character post for the authenticated user. Requires Basic Auth.",
+        security = @SecurityRequirement(name = "basicAuth")
+    )
+    public PostDto createPost(@Valid @RequestBody PostCreateDto dto, @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not logged in");
+        }
+
+        String username = userDetails.getUsername();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User not found"));
 
         Post post = new Post(user, dto.getContent());
         return new PostDto(postRepository.save(post));
