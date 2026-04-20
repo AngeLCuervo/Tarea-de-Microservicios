@@ -97,7 +97,7 @@ Cada endpoint está documentado con sus códigos de respuesta (200, 201, 401, 40
 ---
 
 ## 8. Video de Demostración
-[![Ver Video de Demostración](./docs/thumbnail.png)](https://raw.githubusercontent.com/AngeLCuervo/Tarea-de-Microservicios/main/docs/demo_arep.mp4)
+https://pruebacorreoescuelaingeduco-my.sharepoint.com/:v:/g/personal/juan_nieto-co_mail_escuelaing_edu_co/IQD0zpWowdbCSLG482I9sp18ATdpKptJuchnU0VsRI5qQYE?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=d4sgce
 
 *(Haz clic en la imagen superior para reproducir el video de demostración en una nueva pestaña)*
 
