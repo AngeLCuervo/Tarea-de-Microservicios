@@ -99,7 +99,9 @@ Cada endpoint está documentado con sus códigos de respuesta (200, 201, 401, 40
 ## 8. Video de Demostración
 En este video realizamos un recorrido completo por la aplicación, explicando la arquitectura, el flujo de seguridad con Auth0 y demostrando el funcionamiento de los microservicios en AWS.
 
-<video controls src="./docs/demo_arep.mp4" title="Demostración AREP"></video>
+### 🎥 [HAZ CLIC AQUÍ PARA VER EL VIDEO DE DEMOSTRACIÓN](./docs/demo_arep.mp4)
+
+*(Si el video no carga automáticamente, puedes descargarlo directamente desde la carpeta `docs`)*
 
 **Contenido del video:**
 - Explicación del diagrama de arquitectura.
