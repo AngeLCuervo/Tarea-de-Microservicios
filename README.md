@@ -97,7 +97,7 @@ Cada endpoint está documentado con sus códigos de respuesta (200, 201, 401, 40
 ---
 
 ## 8. Video de Demostración
-[![Ver Video de Demostración](./docs/thumbnail.png)](./docs/demo_arep.mp4)
+[![Ver Video de Demostración](./docs/thumbnail.png)](https://raw.githubusercontent.com/AngeLCuervo/Tarea-de-Microservicios/main/docs/demo_arep.mp4)
 
 *(Haz clic en la imagen superior para reproducir el video de demostración en una nueva pestaña)*
 
